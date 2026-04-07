@@ -28,11 +28,11 @@ async def getfilms_paginated(page: int = 1, per_page: int = 20, genre_id: int | 
 
         if genre_id is None:
             cursor.execute(f"""
-                SELECT * FROM film ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
+                SELECT * FROM film ORDER BY DateSortie DESC LIMIT {per_page} OFFSET {(page - 1) * per_page}
                 """)
         else:
             cursor.execute(f"""
-                SELECT * FROM film  WHERE Genre_ID = {genre_id} ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
+                SELECT * FROM film  WHERE Genre_ID = {genre_id} ORDER BY DateSortie DESC LIMIT {per_page} OFFSET {(page - 1) * per_page}
                 """)
 
         films = cursor.fetchall() # C 1 clai primair
