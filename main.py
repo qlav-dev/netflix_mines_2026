@@ -26,7 +26,17 @@ async def getfilm(request: Request):
         cursor.execute(f"""
             SELECT * FROM film WHERE id = {request.path_params["film_id"]}
             """)
-        res = cursor.fetchone()
+        res = cursor.fetchone() # C 1 clai primair
+        return res
+
+@app.get("/genres")
+async def getGenres():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT * from genre
+            """)
+        res = cursor.fetchall()
         return res
 
 @app.post("/film")
