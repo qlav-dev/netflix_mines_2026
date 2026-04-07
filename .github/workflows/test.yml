@@ -1,0 +1,136 @@
+name: Tests API
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout du code élève
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Télécharger les fichiers de test
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/SIMVIA-lucas-sovre/netflix_mines_2026/test/test_api.py" -o test_api.py
+          curl -sSfL "https://raw.githubusercontent.com/SIMVIA-lucas-sovre/netflix_mines_2026/test/db.py" -o db.py
+
+      - name: Installer les dépendances
+        run: |
+          pip install fastapi uvicorn httpx pytest pytest-json-report
+
+      - name: Lancer les tests et générer le rapport
+        run: |
+          pytest test_api.py -v --tb=short --json-report --json-report-file=report.json || true
+          python3 - <<'SCRIPT'
+          import json, os, sys
+
+          DESCRIPTIONS = {
+              "test_register_success": "`POST /register` avec email/password valides → 200 + token retourné",
+              "test_register_duplicate_email": "`POST /register` avec un email déjà existant → erreur (409 ou similaire)",
+              "test_register_missing_fields": "`POST /register` sans champs requis → 422 (validation)",
+              "test_login_success": "`POST /login` avec bons identifiants → 200 + `access_token`",
+              "test_login_wrong_password": "`POST /login` avec mauvais mot de passe → 401",
+              "test_login_nonexistent_email": "`POST /login` avec un email inconnu → 401",
+              "test_login_missing_fields": "`POST /login` sans champs requis → 422",
+              "test_get_genres": "`GET /genres` → 200 + liste de genres",
+              "test_genres_sorted_by_type": "Les genres retournés sont triés par `type`",
+              "test_get_films_default_pagination": "`GET /films` → 200 + réponse paginée avec clés `page`, `data`, `total`",
+              "test_get_films_custom_pagination": "`GET /films?page=2&per_page=5` → pagination personnalisée respectée",
+              "test_get_films_sorted_by_date_desc": "Les films sont triés par date décroissante par défaut",
+              "test_get_films_filter_by_genre": "`GET /films?genre=X` → seuls les films du genre X sont retournés",
+              "test_get_films_filter_nonexistent_genre": "`GET /films?genre=inexistant` → `data` vide, pas d'erreur",
+              "test_get_films_page_beyond_total": "`GET /films?page=9999` → `data` vide, pas d'erreur",
+              "test_get_film_by_id": "`GET /films/{id}` → 200 + détail du film",
+              "test_add_preference": "`POST /preferences` avec auth + genre valide → ajout OK",
+              "test_add_preference_duplicate": "Ajouter deux fois le même genre → erreur (conflit)",
+              "test_add_preference_no_auth": "`POST /preferences` sans token → 422",
+              "test_add_preference_invalid_token": "`POST /preferences` avec token bidon → 401",
+              "test_remove_preference": "`DELETE /preferences/{genre}` avec auth → suppression OK",
+              "test_remove_preference_not_found": "Supprimer un genre non ajouté → 404",
+              "test_remove_preference_no_auth": "`DELETE /preferences` sans token → 422",
+              "test_recommendations_returns_films": "`GET /recommendations` avec auth → liste de films basée sur les préférences",
+              "test_recommendations_sorted_by_date": "Les recommandations sont triées par date décroissante",
+              "test_recommendations_no_preferences": "`GET /recommendations` sans préférences → liste vide",
+              "test_recommendations_no_auth": "`GET /recommendations` sans token → 422",
+              "test_recommendations_max_5": "Les recommandations retournent **max 5 films**",
+          }
+
+          with open("report.json") as f:
+              report = json.load(f)
+
+          tests = report.get("tests", [])
+          passed = [t for t in tests if t["outcome"] == "passed"]
+          failed = [t for t in tests if t["outcome"] != "passed"]
+
+          total = len(tests)
+          nb_passed = len(passed)
+          nb_failed = len(failed)
+
+          lines = []
+          lines.append("# Résultats des tests")
+          lines.append("")
+          lines.append(f"**{nb_passed}/{total}** tests passent ✅")
+          if nb_failed:
+              lines.append(f"**{nb_failed}** test(s) échoué(s) ❌")
+          lines.append("")
+
+          if failed:
+              lines.append("## Détail des échecs")
+              lines.append("")
+              lines.append("| Test | Ce qu'il vérifie | Erreur |")
+              lines.append("|------|-------------------|--------|")
+              for t in failed:
+                  name = t["nodeid"].split("::")[-1]
+                  desc = DESCRIPTIONS.get(name, "")
+                  # Extraire le message d'erreur
+                  msg = ""
+                  crash = t.get("call", {}).get("crash", {})
+                  if crash.get("message"):
+                      msg = crash["message"].split("\n")[0]
+                  elif t.get("call", {}).get("longrepr"):
+                      longrepr = t["call"]["longrepr"]
+                      if isinstance(longrepr, str):
+                          err_lines = [l.strip() for l in longrepr.splitlines() if l.strip()]
+                          msg = err_lines[-1] if err_lines else "Erreur inconnue"
+                  else:
+                      msg = "Erreur inconnue"
+                  # Échapper les pipes pour le tableau markdown
+                  msg = msg.replace("|", "\\|")
+                  desc = desc.replace("|", "\\|")
+                  lines.append(f"| `{name}` | {desc} | {msg} |")
+              lines.append("")
+
+          if passed:
+              lines.append("## Tests réussis ✅")
+              lines.append("")
+              lines.append("| Test | Ce qu'il vérifie |")
+              lines.append("|------|-------------------|")
+              for t in passed:
+                  name = t["nodeid"].split("::")[-1]
+                  desc = DESCRIPTIONS.get(name, "")
+                  desc = desc.replace("|", "\\|")
+                  lines.append(f"| `{name}` | {desc} |")
+              lines.append("")
+
+          if nb_failed == 0:
+              lines.append("🎉 Tous les tests passent, bravo !")
+
+          report_text = "\n".join(lines)
+
+          # Afficher dans les logs
+          print(report_text)
+
+          # Écrire dans le Job Summary GitHub
+          summary_file = os.environ.get("GITHUB_STEP_SUMMARY", "")
+          if summary_file:
+              with open(summary_file, "a") as f:
+                  f.write(report_text + "\n")
+
+          sys.exit(0)
+          SCRIPT
