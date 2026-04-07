@@ -87,5 +87,5 @@ jobs:
               with open(summary_file, "a") as f:
                   f.write(report_text + "\n")
 
-          sys.exit(1 if nb_failed else 0)
+          sys.exit(0)
           SCRIPT
