@@ -22,17 +22,31 @@ def ping():
     return {"message": "pong"}
 
 @app.get("/films")
-async def getfilms_paginated(page: int = 1, per_page: int = 20, genre_id: int = 1):
+async def getfilms_paginated(page: int = 1, per_page: int = 20, genre_id: int | None = None):
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute(f"""
-            SELECT * FROM film  WHERE Genre_ID = {genre_id} ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
-            """)
+
+        if genre_id is None:
+            cursor.execute(f"""
+                SELECT * FROM film ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
+                """)
+        else:
+            cursor.execute(f"""
+                SELECT * FROM film  WHERE Genre_ID = {genre_id} ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
+                """)
+
         films = cursor.fetchall() # C 1 clai primair
 
-        cursor.execute(f"""
-            SELECT COUNT(*) FROM film WHERE Genre_ID = {genre_id}
-        """)
+
+        if genre_id is None:
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM film 
+            """)
+        else:
+            cursor.execute(f"""
+                SELECT COUNT(*) FROM film WHERE Genre_ID = {genre_id}
+                """)
+
         nb_films = cursor.fetchone()["COUNT(*)"]
 
         output = {
