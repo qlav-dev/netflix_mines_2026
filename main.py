@@ -67,8 +67,6 @@ class User(BaseModel):
     pseudo: str = None
     password: str = None
 
-
-
 @app.post("/auth/register")
 async def registerUser(user: User):
     # On met le sel "+ pseudo"
@@ -91,6 +89,10 @@ async def registerUser(user: User):
         }
 
         return output_dict
+
+@app.post("/auth/login")
+async def loginUser(user: User ):
+    ...
 
 SECRET_KEY = "4a337e2670188a0b893fb6280f6890efbda50275c6f07cd68880afaf143c8996"
 ALGORITHM = "HS256"
