@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from fastapi.exceptions import HTTPException
 
 from db import get_connection
 
@@ -18,6 +19,28 @@ app = FastAPI()
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
+
+@app.get("/films")
+async def getfilms_paginated(page: int = 1, per_page: int = 20, genre_id: int = 1):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT * FROM film  WHERE Genre_ID = {genre_id} ORDER BY Nom LIMIT {per_page} OFFSET {(page - 1) * per_page}
+            """)
+        films = cursor.fetchall() # C 1 clai primair
+
+        cursor.execute(f"""
+            SELECT COUNT(*) FROM film WHERE Genre_ID = {genre_id}
+        """)
+        nb_films = cursor.fetchone()["COUNT(*)"]
+
+        output = {
+            "data": films,
+            "page": page,
+            "per_page": per_page,
+            "total": nb_films
+            }
+        return output
 
 class Film(BaseModel):
     id: int | None = None
@@ -67,11 +90,13 @@ class User(BaseModel):
     pseudo: str = None
     password: str = None
 
+salt = b'$2b$12$HS34zys/Tw6HsKps1esSLe' # goofy aah
+
 @app.post("/auth/register")
 async def registerUser(user: User):
-    # On met le sel "+ pseudo"
-    salt = bcrypt.gensalt()
 
+    # On met le sel "+ pseudo"
+    # salt = bcrypt.gensalt()
     # Hashing the password
     hash_password = bcrypt.hashpw(user.password.encode('utf-8'), salt).decode('utf-8')
 
@@ -81,7 +106,7 @@ async def registerUser(user: User):
             INSERT INTO Utilisateur (AdresseMail, Pseudo, MotDePasse) VALUES('{user.email}', '{user.pseudo}', '{hash_password}') RETURNING *
             """)
         res = dict(cursor.fetchone()) # On recup ce qu'on a mis dedans
-        
+
         token = create_access_token(res, timedelta(days=1))
         output_dict = {
         "access_token": token,
@@ -92,10 +117,31 @@ async def registerUser(user: User):
 
 @app.post("/auth/login")
 async def loginUser(user: User ):
-    return {
-  "access_token": "eyJhbGciOi...",
-  "token_type": "bearer"
-}
+        # On met le sel "+ pseudo"
+    # salt = bcrypt.gensalt()
+
+    # Hashing the password
+    hash_password = bcrypt.hashpw(user.password.encode('utf-8'), salt).decode('utf-8')
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"""
+            SELECT * FROM Utilisateur WHERE AdresseMail = '{user.email}' AND MotDePasse = '{hash_password}'
+            """)
+
+        res = cursor.fetchone() # On recup ce qu'on a mis dedans
+        if res is None:
+            raise HTTPException(status_code=500, detail=f"Erreur interne : Wrong Password")
+        res = dict(res)
+        
+        token = create_access_token(res, timedelta(days=1))
+        output_dict = {
+        "access_token": token,
+        "token_type": "bearer"
+        }
+
+        return output_dict
+
 
 SECRET_KEY = "4a337e2670188a0b893fb6280f6890efbda50275c6f07cd68880afaf143c8996"
 ALGORITHM = "HS256"
@@ -115,3 +161,11 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+"""
+{
+  "email": "barna.baruchel@xibolu.bzh",
+  "pseudo": "barnab",
+  "password": "j4imel1fo"
+}
+"""
