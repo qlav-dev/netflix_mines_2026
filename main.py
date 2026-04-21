@@ -270,6 +270,33 @@ async def preferences_del(genre: int, credentials: HTTPAuthorizationCredentials 
     return {"message": f"Deleted {genre} successfully"}
 
 
+@app.get("/preferences/recommendations")
+async def preferences_get_recommendations(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    
+    if credentials is None:
+        raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
+
+    try:
+        user_data = jwt.decode(credentials.credentials, SECRET_KEY, ALGORITHM)
+    except: # moche
+        raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
+
+    
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT ID FROM Film JOIN Genre_Utilisateur ON ID_Genre = Genre_ID WHERE ID_User = {user_data["ID"]} 
+        """)
+
+        res = cursor.fetchall()
+
+        if len(res) == 0:
+            return [] # Cas vide
+
+        
+
+
 if __name__ == "__main__":
     import uvicorn
 
