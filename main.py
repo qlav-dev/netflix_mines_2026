@@ -75,13 +75,19 @@ class Film(BaseModel):
 async def getfilm(request: Request):
     with get_connection() as conn:
         cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT COUNT(*) FROM film WHERE id = {request.path_params["film_id"]}
+            """)
+        res = cursor.fetchone() # C 1 clai primair
+
+        if res["COUNT(*)"] == 0:
+            raise HTTPException(status_code=404, detail = "Film not found !")
+
         cursor.execute(f"""
             SELECT * FROM film WHERE id = {request.path_params["film_id"]}
             """)
         res = cursor.fetchone() # C 1 clai primair
-
-        if res[0] is None:
-            raise HTTPException(status_code=404, detail = "Film not found !")
 
         return res
 
