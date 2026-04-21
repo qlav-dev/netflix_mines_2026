@@ -220,7 +220,7 @@ async def add_pref(pref_entry: prefEntry, credentials: HTTPAuthorizationCredenti
         raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
 
     try:
-        user_data = jwt.decode(credentials[0], SECRET_KEY, ALGORITHM)
+        user_data = jwt.decode(credentials.credentials, SECRET_KEY, ALGORITHM)
     except: # moche
         raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
 
