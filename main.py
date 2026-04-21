@@ -282,7 +282,17 @@ async def preferences_del(genre: int, credentials: HTTPAuthorizationCredentials 
 
 @app.get("/preferences/recommendations")
 async def preferences_get_recommendations(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    return {"MESSAGE" : "FEUR"}
+    
+    if credentials is None:
+        raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
+
+    try:
+        user_data = jwt.decode(credentials.credentials, SECRET_KEY, ALGORITHM)
+    except: # moche
+        raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
+
+    
+    return {"message": "feur"}
 
         
 
