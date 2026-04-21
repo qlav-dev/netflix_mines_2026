@@ -292,7 +292,16 @@ async def preferences_get_recommendations(credentials: HTTPAuthorizationCredenti
         raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
 
     
-    return {"message": "feur"}
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT Film FROM Film
+        """)
+
+        res = cursor.fetchall()
+            
+        return res
 
         
 
