@@ -241,17 +241,6 @@ async def add_pref(pref_entry: prefEntry, credentials: HTTPAuthorizationCredenti
 @app.delete("/preferences/{genre}")
 async def preferences_del(genre: int, credentials: HTTPAuthorizationCredentials = Depends(security)):
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        
-        cursor.execute(f"""
-            SELECT * from genre
-            """)
-        res = cursor.fetchall()
-
-        if genre not in [x["ID"] for x in res]:
-            raise HTTPException(status_code=409, detail="Erreur interne: Le genre n'existe pas !")
-
     if credentials is None:
         raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
 
@@ -267,6 +256,7 @@ async def preferences_del(genre: int, credentials: HTTPAuthorizationCredentials 
             SELECT COUNT(*) FROM Genre_Utilisateur  WHERE ID_Genre = {genre} AND ID_User = {user_data["ID"]}
         """)
 
+        print(res)
         res = cursor.fetchone()
 
         if res == 0:
