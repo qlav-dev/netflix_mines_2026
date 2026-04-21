@@ -24,7 +24,7 @@ from datetime import timedelta
 
 ip_log = {}
 max_delay = 60 # s
-RATE_LIMIT = 5
+RATE_LIMIT = 50 # Requetes tous les max_delay
 
 real_time_clock_id = time.CLOCK_REALTIME
 
@@ -51,7 +51,7 @@ class IPTrackingRoute(APIRoute):
                 tab.append(current_time)
 
                 if len(tab) > RATE_LIMIT:
-                    raise HTTPException(status_code=403, detail="Forbidden.") # Temporaire
+                    raise HTTPException(status_code=403, detail=f"Forbidden. ({len(tab)}/{RATE_LIMIT})") # Temporaire
 
                 ip_log[client_ip] = tab
             else:
