@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Header
 from pydantic import BaseModel
 from fastapi.exceptions import HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from db import get_connection
 from typing import Annotated
@@ -173,7 +174,7 @@ async def loginUser(user: User):
             "token_type": "bearer"
         }
 
-        print(output_dict)
+        #print(output_dict)
 
         return output_dict
 
@@ -195,7 +196,7 @@ class prefEntry(BaseModel):
     genre_id: int = 0
 
 @app.post("/preferences")
-async def add_pref(x_token: Annotated[list[str] | None, Header()] = None, pref_entry: prefEntry = None):
+async def add_pref(pref_entry: prefEntry, credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
         Prend l'access token en argument, et l'entry preferée.
     """
@@ -212,12 +213,12 @@ async def add_pref(x_token: Annotated[list[str] | None, Header()] = None, pref_e
         if pref_entry.genre_id not in [x["ID"] for x in res]:
             raise HTTPException(status_code=409, detail="Erreur interne: Le genre n'existe pas !")
 
-    print("token is: ", x_token)
-    if x_token is None:
+    print("token is: ", credentials)
+    if credentials is None:
         raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
 
     try:
-        user_data = jwt.decode(x_token[0], SECRET_KEY, ALGORITHM)
+        user_data = jwt.decode(credentials[0], SECRET_KEY, ALGORITHM)
     except: # moche
         raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
 
