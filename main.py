@@ -81,7 +81,7 @@ async def getfilm(request: Request):
         res = cursor.fetchone() # C 1 clai primair
 
         if res[0] is None:
-            raise HTTPException(status_code=404, "Film not found !")
+            raise HTTPException(status_code=404, detail = "Film not found !")
 
         return res
 
