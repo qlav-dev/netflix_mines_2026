@@ -296,12 +296,16 @@ async def preferences_get_recommendations(credentials: HTTPAuthorizationCredenti
         cursor = conn.cursor()
 
         cursor.execute(f"""
-            SELECT Film FROM Film
+            SELECT Film.* FROM Film JOIN Genre_Utilisateur ON ID_Genre = Genre_ID WHERE ID_User = {user_data["ID"]} ORDER BY DateSortie DESC LIMIT 5
         """)
 
         res = cursor.fetchall()
+        #print("RES IS:", res["Nom"])
+
+        if len(res) == 0:
+            return [] # Cas vide
             
-        return res
+        return [dict(d) for d in res]
 
         
 
