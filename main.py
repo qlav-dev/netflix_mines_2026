@@ -252,7 +252,7 @@ async def preferences_del(genre: int, credentials: HTTPAuthorizationCredentials 
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        cursor.execute(f""""
+        cursor.execute(f"""
             SELECT COUNT(*) FROM Genre_Utilisateur  WHERE ID_Genre = {genre} AND ID_User = {user_data["ID"]}
         """)
 
