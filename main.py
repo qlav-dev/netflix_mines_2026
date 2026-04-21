@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header
 from pydantic import BaseModel
 from fastapi.exceptions import HTTPException
 
 from db import get_connection
+from typing import Annotated
+
 
 
 # Gestion des token user
@@ -146,7 +148,7 @@ async def registerUser(user: User):
 
 @app.post("/auth/login")
 async def loginUser(user: User):
-        # On met le sel "+ pseudo"
+    # On met le sel "+ pseudo"
     # salt = bcrypt.gensalt()
 
     check_user_valid(user)
@@ -173,7 +175,6 @@ async def loginUser(user: User):
 
         return output_dict
 
-
 SECRET_KEY = "4a337e2670188a0b893fb6280f6890efbda50275c6f07cd68880afaf143c8996"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -188,6 +189,51 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+class prefEntry(BaseModel):
+    genre_id: int = 0
+
+@app.post("/preferences")
+async def add_pref(x_token: Annotated[list[str] | None, Header()] = None, pref_entry: prefEntry = None):
+    """
+        Prend l'access token en argument, et l'entry preferée.
+    """
+
+    # First we check if the genre exists
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute(f"""
+            SELECT * from genre
+            """)
+        res = cursor.fetchall()
+
+        if pref_entry.genre_id not in [x["ID"] for x in res]:
+            raise HTTPException(status_code=409, detail="Erreur interne: Le genre n'existe pas !")
+
+
+    if x_token is None:
+        raise HTTPException(status_code=422, detail="Erreur interne: Spap token")
+
+    try:
+        user_data = jwt.decode(x_token[0], SECRET_KEY, ALGORITHM)
+    except: # moche
+        raise HTTPException(status_code=401, detail="Erreur interne: Mauvais token")
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(f"""
+                INSERT INTO Genre_Utilisateur (ID_Genre, ID_User) VALUES('{pref_entry.genre_id}', '{user_data["ID"]}') RETURNING *
+                """)
+            res = dict(cursor.fetchone()) # On recup ce qu'on a mis dedans
+        except sqlite3.IntegrityError:
+            # Déjà favoris pour cet user
+            raise HTTPException(status_code=409, detail=f"Erreur interne : Conflit ! Le genre est déjà ajouté !")
+
+    return {"message": "Everything ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
 
@@ -199,4 +245,6 @@ if __name__ == "__main__":
   "pseudo": "barnab",
   "password": "j4imel1fo"
 }
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6NywiQWRyZXNzZU1haWwiOiJiYXJuYS5iYXJ1Y2hlbEB4aWJvbHUuYnpoIiwiUHNldWRvIjoiYmFybmFiIiwiTW90RGVQYXNzZSI6IiQyYiQxMiRIUzM0enlzL1R3NkhzS3BzMWVzU0xlc0FMSXU1eTVUL0pvRWRhZHBXbFBzdUt1MDVsTnpuQyIsImV4cCI6MTc3Njg1OTYzNn0.0RIDdWE0NJSLV5It-1rCALaXhIFHwt657dGHRDsumSw
 """
