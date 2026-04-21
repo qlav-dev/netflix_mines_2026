@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Header
+from fastapi import Depends, FastAPI, Request, Header
 from pydantic import BaseModel
 from fastapi.exceptions import HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -18,6 +18,8 @@ import datetime as dt
 import sqlite3
 
 app = FastAPI()
+
+security = HTTPBearer(auto_error=False)
 
 
 @app.get("/ping")
